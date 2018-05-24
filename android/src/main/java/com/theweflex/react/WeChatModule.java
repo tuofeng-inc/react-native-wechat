@@ -60,6 +60,14 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     private final static String INVOKE_FAILED = "WeChat API invoke returns false.";
     private final static String INVALID_ARGUMENT = "invalid argument.";
 
+    private final static String RCTWXMiniProgramTypeRelease = "release";
+    private final static String RCTWXMiniProgramTypeDevelop = "develop";
+    private final static String RCTWXMiniProgramTypePreview = "preview";
+    private final static int WXMiniProgramTypeRelease = 0;
+    private final static int WXMiniProgramTypeDevelop = 1;
+    private final static int WXMiniProgramTypePreview = 2;
+
+
     public WeChatModule(ReactApplicationContext context) {
         super(context);
     }
@@ -173,7 +181,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         }
         _share(SendMessageToWX.Req.WXSceneSession, data, callback);
     }
-    
+
     @ReactMethod
     public void shareToFavorite(ReadableMap data, Callback callback) {
         if (api == null) {
@@ -479,9 +487,20 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         object.path = data.getString("path");
 
         try {
-            object.withShareTicket = data.getBoolean("withShareTicket ");
+            object.withShareTicket = data.getBoolean("withShareTicket");
         }catch(Exception e) {
             object.withShareTicket = false;
+        }
+
+        if (data.hasKey("miniProgramType")) {
+          String miniProgramType = data.getString("miniProgramType");
+          if (miniProgramType.equals(RCTWXMiniProgramTypeRelease)) {
+            object.miniprogramType = WXMiniProgramTypeRelease;
+          } else if (miniProgramType.equals(RCTWXMiniProgramTypeDevelop)) {
+            object.miniprogramType = WXMiniProgramTypeDevelop;
+          } else if (miniProgramType.equals(RCTWXMiniProgramTypePreview)) {
+            object.miniprogramType = WXMiniProgramTypePreview;
+          }
         }
 
         return object;
