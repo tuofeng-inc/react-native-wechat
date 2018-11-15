@@ -105,7 +105,9 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
 
     public static void handleIntent(Intent intent) {
         for (WeChatModule mod : modules) {
-            mod.api.handleIntent(intent, mod);
+            if (mod != null && mod.api != null) {
+                mod.api.handleIntent(intent, mod);
+            }
         }
     }
 

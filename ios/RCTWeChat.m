@@ -398,7 +398,8 @@ RCT_EXPORT_METHOD(shareToFavorite:(NSDictionary *)data
     
         if (resp.errCode == WXSuccess)
         {
-            [body addEntriesFromDictionary:@{@"appid":self.appId, @"code" :r.code}];
+            //[body addEntriesFromDictionary:@{@"appid":self.appId, @"code" :r.code}];
+            [body addEntriesFromDictionary:@{@"appid":self.appId != nil ? self.appId : @"", @"code" :r.code != nil ? r.code : @""}];
             [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
         }
         else {
