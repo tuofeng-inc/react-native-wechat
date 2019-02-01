@@ -225,7 +225,12 @@ RCT_EXPORT_METHOD(shareToFavorite:(NSDictionary *)data
         } else if ([type isEqualToString:RCTWXShareTypeImageUrl] ||
                    [type isEqualToString:RCTWXShareTypeImageFile] ||
                    [type isEqualToString:RCTWXShareTypeImageResource]) {
-            NSURL *url = [NSURL URLWithString:aData[RCTWXShareImageUrl]];
+            NSURL * url;
+            if ([type isEqualToString:RCTWXShareTypeImageFile]) {
+                url = [NSURL fileURLWithPath:aData[RCTWXShareImageUrl]];
+            } else {
+                url = [NSURL URLWithString:aData[RCTWXShareImageUrl]];
+            }
             NSURLRequest *imageRequest = [NSURLRequest requestWithURL:url];
             [self.bridge.imageLoader loadImageWithURLRequest:imageRequest callback:^(NSError *error, UIImage *image) {
                 if (image == nil){
