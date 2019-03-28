@@ -4,4 +4,8 @@ node_modules
 
 Example
 *.jpg
-
+.idea
+.npmignore
+.travis.yml
+CODE_OF_CONDUCT.md
+_config.yml
