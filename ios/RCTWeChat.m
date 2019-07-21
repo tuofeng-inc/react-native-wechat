@@ -372,7 +372,25 @@ RCT_EXPORT_METHOD(shareToFavorite:(NSDictionary *)data
 
 -(void) onReq:(BaseReq*)req
 {
-    // TODO(Yorkie)
+    if ([req isKindOfClass:[LaunchFromWXReq class]]) {
+        LaunchFromWXReq *wxReq = (LaunchFromWXReq*)req;
+        WXMediaMessage *message =  wxReq.message;
+        NSString *messageExt = message.messageExt;
+        if (messageExt != nil) {
+            @try {
+                id obj = [NSJSONSerialization JSONObjectWithData:[messageExt dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
+                NSString *params = [(NSDictionary *)obj objectForKey:@"params"];
+                NSDictionary *body = @{
+                                       @"type": @"MiniProgramLaunch.Resp",
+                                       @"extMsg": [[NSString alloc] initWithFormat:@"webank:/%@", params]
+                                       };
+                
+                [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+            } @catch (NSException *exception) {
+                
+            }
+        }
+    }
 }
 
 -(void) onResp:(BaseResp*)resp
@@ -404,6 +422,19 @@ RCT_EXPORT_METHOD(shareToFavorite:(NSDictionary *)data
         }
         else {
             [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+        }
+    } else if ([resp isKindOfClass:[WXLaunchMiniProgramResp class]]) {
+        @try {
+            WXLaunchMiniProgramResp *r = (WXLaunchMiniProgramResp *)resp;
+            
+            NSMutableDictionary *body = @{@"errCode":@(r.errCode)}.mutableCopy;
+            id obj = [NSJSONSerialization JSONObjectWithData:[r.extMsg dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
+            NSString *params = [(NSDictionary *)obj objectForKey:@"params"];
+            body[@"extMsg"] = [[NSString alloc] initWithFormat:@"webank:/%@", params];
+            body[@"type"] = @"MiniProgramLaunch.Resp";
+            [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+        } @catch (NSException *exception) {
+            
         }
     }
 }
