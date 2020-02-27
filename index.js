@@ -145,6 +145,7 @@ const nativeShareToTimeline = wrapApi(WeChat.shareToTimeline);
 const nativeShareToSession = wrapApi(WeChat.shareToSession);
 const nativeShareToFavorite = wrapApi(WeChat.shareToFavorite);
 const nativeSendAuthRequest = wrapApi(WeChat.sendAuthRequest);
+const nativeSendSubscribeMsgReq = wrapApi(WeChat.sendSubscribeMsgReq);
 
 /**
  * @method sendAuthRequest
@@ -155,6 +156,28 @@ export function sendAuthRequest(scopes, state) {
   return new Promise((resolve, reject) => {
     WeChat.sendAuthRequest(scopes, state, () => {});
     emitter.once('SendAuth.Resp', resp => {
+      if (resp.errCode === 0) {
+        resolve(resp);
+      } else {
+        reject(new WechatError(resp));
+      }
+    });
+  });
+}
+
+/**
+ * 获取一次给用户推送一条订阅消息的机会
+ * @method sendSubscribeMsgReq
+ * @param {Object} data
+ * @param {scene} 重定向后会带上 scene 参数，开发者可以填 0-10000 的整形值，用来标识订阅场值
+ * @param {templateId} 订阅消息模板 ID，在微信开放平台提交应用审核通过后获得
+ * @param {reserved} 用于保持请求和回调的状态，授权请后原样带回给第三方。该参数可用于防止 csrf 攻击（跨站请求伪造攻击），
+ *    建议第三方带上该参数，可设置为简单的随机数加 session 进行校验，开发者可以填写 a-zA-Z0-9 的参数值，最多 128 字节，要求做 urlencode
+ */
+export function sendSubscribeMsgReq(data) {
+  return new Promise((resolve, reject) => {
+    nativeSendSubscribeMsgReq(data);
+    emitter.once(this.RespType.SubscribeMsg, resp => {
       if (resp.errCode === 0) {
         resolve(resp);
       } else {
@@ -313,5 +336,6 @@ export class WechatError extends Error {
 }
 
 export const RespType = {
-  MiniProgramLaunch: 'MiniProgramLaunch.Resp'
+  MiniProgramLaunch: 'MiniProgramLaunch.Resp',
+  SubscribeMsg: 'SubscribeMsg.Resp'
 }

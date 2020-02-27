@@ -83,7 +83,7 @@ Open the WeChat app from your application.
 - `state` {String} the state of OAuth2
 - returns {Object}
 
-Send authentication request, and it returns an object with the 
+Send authentication request, and it returns an object with the
 following fields:
 
 | field   | type   | description                         |
@@ -95,6 +95,26 @@ following fields:
 | url     | String | The URL string                      |
 | lang    | String | The user language                   |
 | country | String | The user country                    |
+
+#### sendSubscribeMsgReq({scene, templateId, reserved})
+
+- `scene` {Number} 重定向后会带上 scene 参数，开发者可以填 0-10000 的整形值，用来标识订阅场值
+- `templateId` {String} 订阅消息模板 ID
+- `reserved` {String} 用于保持请求和回调的状态，授权请后原样带回给第三方。该参数可用于防止 csrf 攻击
+- returns {Object}
+
+Send subscribeMsg request, and it returns an object with the
+following fields:
+
+| field      | type   | description                                               |
+|------------|--------|-----------------------------------------------------------|
+| errCode    | Number | Error Code                                                |
+| errStr     | String | Error message if any error occurred                       |
+| openId     | String | 用户唯一标识                                                |
+| templateId | String | Authorization code                                        |
+| action     | String | 用户点击动作，"confirm"代表用户确认授权，"cancel"代表用户取消授权 |
+| scene      | Number | 订阅场景值。                                                |
+| reserved   | String | 请求带入原样返回。                                           |
 
 #### class `ShareMetadata`
 

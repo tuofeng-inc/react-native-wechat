@@ -135,6 +135,18 @@ RCT_EXPORT_METHOD(sendErrorUserCancelResponse:(NSString *)message
     callback(@[[WXApi sendResp:resp] ? [NSNull null] : INVOKE_FAILED]);
 }
 
+RCT_EXPORT_METHOD(sendSubscribeMsgReq:(UInt32)scene
+                  :(NSString *)templateId
+                  :(NSString *)reserved
+                  :(RCTResponseSenderBlock)callback)
+{
+    WXSubscribeMsgReq *resp = [[WXSubscribeMsgReq alloc] init];
+    resp.scene = scene;
+    resp.templateId = templateId;
+    resp.reserved = reserved;
+    callback(@[[WXApi sendReq:resp] ? [NSNull null] : INVOKE_FAILED]);
+}
+
 RCT_EXPORT_METHOD(shareToTimeline:(NSDictionary *)data
                   :(RCTResponseSenderBlock)callback)
 {
@@ -435,6 +447,21 @@ RCT_EXPORT_METHOD(shareToFavorite:(NSDictionary *)data
             [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
         } @catch (NSException *exception) {
             
+        }
+    } else if ([resp isKindOfClass:[WXSubscribeMsgResp class]]) {
+        @try {
+            WXSubscribeMsgResp *r = (WXSubscribeMsgResp *)resp;
+            NSMutableDictionary *body = @{@"errCode":@(r.errCode)}.mutableCopy;
+            body[@"errStr"] = r.errStr ?: @"";
+            body[@"type"] = @"SubscribeMsg.Resp";
+            body[@"openid"] = r.openId ?: @"";
+            body[@"templateId"] = r.templateId ?: @"";
+            body[@"action"] = r.action ?: @"";
+            body[@"reserved"] = r.reserved ?: @"";
+            body[@"scene"] = @(r.scene);
+            [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+        } @catch (NSException *exception) {
+
         }
     }
 }
