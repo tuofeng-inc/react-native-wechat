@@ -145,6 +145,7 @@ const nativeShareToTimeline = wrapApi(WeChat.shareToTimeline);
 const nativeLaunchMini = wrapApi(WeChat.launchMini);
 const nativeShareToSession = wrapApi(WeChat.shareToSession);
 const nativeSendAuthRequest = wrapApi(WeChat.sendAuthRequest);
+const nativeSendSubscribeMsgReq = wrapApi(WeChat.sendSubscribeMsgReq);
 
 /**
  * @method sendAuthRequest
@@ -163,6 +164,28 @@ export function sendAuthRequest(scopes, state) {
             }
         });
     });
+}
+
+/**
+ * 获取一次给用户推送一条订阅消息的机会
+ * @method sendSubscribeMsgReq
+ * @param {Object} data
+ * @param {scene} 重定向后会带上 scene 参数，开发者可以填 0-10000 的整形值，用来标识订阅场值
+ * @param {templateId} 订阅消息模板 ID，在微信开放平台提交应用审核通过后获得
+ * @param {reserved} 用于保持请求和回调的状态，授权请后原样带回给第三方。该参数可用于防止 csrf 攻击（跨站请求伪造攻击），
+ *    建议第三方带上该参数，可设置为简单的随机数加 session 进行校验，开发者可以填写 a-zA-Z0-9 的参数值，最多 128 字节，要求做 urlencode
+ */
+export function sendSubscribeMsgReq(data) {
+  return new Promise((resolve, reject) => {
+    nativeSendSubscribeMsgReq(data);
+    emitter.once(this.RespType.SubscribeMsg, resp => {
+      if (resp.errCode === 0) {
+        resolve(resp);
+      } else {
+        reject(new WechatError(resp));
+      }
+    });
+  });
 }
 
 /**
@@ -228,18 +251,19 @@ export function launchMini({userName, miniProgramType = 0, path = ''}) {
  * @method shareToSession
  * @param {Object} data
  * @param {String} data.thumbImage - Thumb image of the message, which can be a uri or a resource id.
- * @param {String} data.type - Type of this message. Could be {news|text|imageUrl|imageFile|imageResource|video|audio|file}
+ * @param {String} data.type - Type of this message. Could be {news|text|imageUrl|imageFile|imageResource|video|audio|file|weapp}
  * @param {String} data.webpageUrl - Required if type equals news. The webpage link to share.
- * @param {String} data.userName - 小程序的原生id.
- * @param {String} data.path - 小程序页面的路径.
- * @param {String} data.hdImageData - 小程序节点高清大图，小于128k.
- * @param {Boolean} data.withShareTicket - 是否使用带 shareTicket 的转发
- * @param {Integer} data.miniProgramType - 分享小程序的版本（0-正式，1-开发，2-体验）
  * @param {String} data.imageUrl - Provide a remote image if type equals image.
  * @param {String} data.videoUrl - Provide a remote video if type equals video.
  * @param {String} data.musicUrl - Provide a remote music if type equals audio.
  * @param {String} data.filePath - Provide a local file if type equals file.
  * @param {String} data.fileExtension - Provide the file type if type equals file.
+ *
+ * @param {String} data.webpageUrl - 兼容低版本的网页链接
+ * @param {String} data.userName - 小程序原始id
+ * @param {String} data.path - 小程序页面的路径
+ * @param {DataURLString} data.hdImageData - 小程序节点高清大图，小于128k
+ * @param {String} data.miniProgramType - oneOf(['release', 'preview', 'develop']) - 小程序分享类型，主要用于开发测试，默认为 release. only for ios.
  */
 export function shareToSession(data) {
     return new Promise((resolve, reject) => {
@@ -281,6 +305,8 @@ export function pay(data) {
     correct('partnerid', 'partnerId');
     correct('timestamp', 'timeStamp');
 
+    if (Platform.OS === 'android') data.timeStamp = String(data.timeStamp)
+
     return new Promise((resolve, reject) => {
         WeChat.pay(data, result => {
             if (result) reject(result);
@@ -315,3 +341,7 @@ export class WechatError extends Error {
     }
 }
 
+export const RespType = {
+  MiniProgramLaunch: 'MiniProgramLaunch.Resp',
+  SubscribeMsg: 'SubscribeMsg.Resp'
+}

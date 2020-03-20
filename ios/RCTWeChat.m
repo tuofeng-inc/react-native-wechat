@@ -135,6 +135,18 @@ RCT_EXPORT_METHOD(sendErrorUserCancelResponse:(NSString *)message
     callback(@[[WXApi sendResp:resp] ? [NSNull null] : INVOKE_FAILED]);
 }
 
+RCT_EXPORT_METHOD(sendSubscribeMsgReq:(UInt32)scene
+                  :(NSString *)templateId
+                  :(NSString *)reserved
+                  :(RCTResponseSenderBlock)callback)
+{
+    WXSubscribeMsgReq *resp = [[WXSubscribeMsgReq alloc] init];
+    resp.scene = scene;
+    resp.templateId = templateId;
+    resp.reserved = reserved;
+    callback(@[[WXApi sendReq:resp] ? [NSNull null] : INVOKE_FAILED]);
+}
+
 RCT_EXPORT_METHOD(shareToTimeline:(NSDictionary *)data
                   :(RCTResponseSenderBlock)callback)
 {
@@ -155,20 +167,6 @@ RCT_EXPORT_METHOD(launchMini:(NSDictionary *)data
     //拉起小程序的类型
     launchMiniProgramReq.miniProgramType = [data[@"miniProgramType"] integerValue];
     BOOL success = [WXApi sendReq:launchMiniProgramReq];
-    callback(@[success ? [NSNull null] : INVOKE_FAILED]);
-}
-
-RCT_EXPORT_METHOD(pay:(NSDictionary *)data
-                  :(RCTResponseSenderBlock)callback)
-{
-    PayReq* req             = [PayReq new];
-    req.partnerId           = data[@"partnerId"];
-    req.prepayId            = data[@"prepayId"];
-    req.nonceStr            = data[@"nonceStr"];
-    req.timeStamp           = [data[@"timeStamp"] unsignedIntValue];
-    req.package             = data[@"package"];
-    req.sign                = data[@"sign"];
-    BOOL success = [WXApi sendReq:req];
     callback(@[success ? [NSNull null] : INVOKE_FAILED]);
 }
 
@@ -303,7 +301,47 @@ RCT_EXPORT_METHOD(pay:(NSDictionary *)data
                                        MediaTag:mediaTagName
                                        callBack:callback];
             
-        } else {
+        } else if ([type isEqualToString:RCTWXShareTypeWeapp]) {
+
+          NSDictionary* mediaData = aData;
+
+          WXMiniProgramObject *wxMiniProgramObject = [WXMiniProgramObject object];
+          wxMiniProgramObject.webpageUrl = mediaData[@"webpageUrl"];
+          wxMiniProgramObject.userName = mediaData[@"userName"];
+          wxMiniProgramObject.path = mediaData[@"path"];
+          NSData *imageData = [NSData dataWithContentsOfURL:[NSURL URLWithString:[mediaData objectForKey:@"hdImageData"]]];
+          while (imageData.length > 128 * 1024) {
+           imageData = UIImageJPEGRepresentation([UIImage imageWithData:imageData], 0.95);
+          }
+          wxMiniProgramObject.hdImageData = imageData;
+          wxMiniProgramObject.withShareTicket = [mediaData[@"withShareTicket"] boolValue];
+
+          // 设置 miniProgramType
+          NSString* miniProgramType = mediaData[@"miniProgramType"];
+          
+          if ([miniProgramType isEqualToString: RCTWXMiniProgramTypeRelease]) {
+            wxMiniProgramObject.miniProgramType = WXMiniProgramTypeRelease;
+          } else if ([miniProgramType isEqualToString: RCTWXMiniProgramTypePreview]) {
+            wxMiniProgramObject.miniProgramType = WXMiniProgramTypePreview;
+          } else if ([miniProgramType isEqualToString: RCTWXMiniProgramTypeDevelop]) {
+            wxMiniProgramObject.miniProgramType = WXMiniProgramTypeTest;
+          } 
+
+
+          WXMediaMessage *message = [WXMediaMessage message];
+          message.title = aData[@"title"];
+          message.description = aData[@"description"];
+          message.mediaObject = wxMiniProgramObject;
+          message.thumbData = nil;
+
+          SendMessageToWXReq *req = [[SendMessageToWXReq alloc] init];
+          req.message = message;
+          req.scene = aScene;
+
+          BOOL success = [WXApi sendReq:req];
+          callback(@[success ? [NSNull null] : INVOKE_FAILED]);
+
+        }else {
             callback(@[@"message type unsupported"]);
         }
     }
@@ -371,7 +409,25 @@ RCT_EXPORT_METHOD(pay:(NSDictionary *)data
 
 -(void) onReq:(BaseReq*)req
 {
-    // TODO(Yorkie)
+    if ([req isKindOfClass:[LaunchFromWXReq class]]) {
+        LaunchFromWXReq *wxReq = (LaunchFromWXReq*)req;
+        WXMediaMessage *message =  wxReq.message;
+        NSString *messageExt = message.messageExt;
+        if (messageExt != nil) {
+            @try {
+                id obj = [NSJSONSerialization JSONObjectWithData:[messageExt dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
+                NSString *params = [(NSDictionary *)obj objectForKey:@"params"];
+                NSDictionary *body = @{
+                                       @"type": @"MiniProgramLaunch.Resp",
+                                       @"extMsg": [[NSString alloc] initWithFormat:@"webank:/%@", params]
+                                       };
+                
+                [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+            } @catch (NSException *exception) {
+                
+            }
+        }
+    }
 }
 
 -(void) onResp:(BaseResp*)resp
@@ -379,7 +435,6 @@ RCT_EXPORT_METHOD(pay:(NSDictionary *)data
     if([resp isKindOfClass:[SendMessageToWXResp class]])
     {
         SendMessageToWXResp *r = (SendMessageToWXResp *)resp;
-        
         NSMutableDictionary *body = @{@"errCode":@(r.errCode)}.mutableCopy;
         body[@"errStr"] = r.errStr;
         body[@"lang"] = r.lang;
@@ -394,13 +449,12 @@ RCT_EXPORT_METHOD(pay:(NSDictionary *)data
         body[@"lang"] = r.lang;
         body[@"country"] =r.country;
         body[@"type"] = @"SendAuth.Resp";
-        
+    
         if (resp.errCode == WXSuccess)
         {
-            if (self.appId && r) {
-                [body addEntriesFromDictionary:@{@"appid":self.appId, @"code" :r.code}];
-                [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
-            }
+            //[body addEntriesFromDictionary:@{@"appid":self.appId, @"code" :r.code}];
+            [body addEntriesFromDictionary:@{@"appid":self.appId != nil ? self.appId : @"", @"code" :r.code != nil ? r.code : @""}];
+            [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
         }
         else {
             [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
@@ -421,6 +475,34 @@ RCT_EXPORT_METHOD(pay:(NSDictionary *)data
         body[@"extMsg"] = r.extMsg;
         body[@"type"] = @"WXLaunchMiniProgramReq.Resp";
         [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+    } else if ([resp isKindOfClass:[WXLaunchMiniProgramResp class]]) {
+        @try {
+            WXLaunchMiniProgramResp *r = (WXLaunchMiniProgramResp *)resp;
+            
+            NSMutableDictionary *body = @{@"errCode":@(r.errCode)}.mutableCopy;
+            id obj = [NSJSONSerialization JSONObjectWithData:[r.extMsg dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingAllowFragments error:nil];
+            NSString *params = [(NSDictionary *)obj objectForKey:@"params"];
+            body[@"extMsg"] = [[NSString alloc] initWithFormat:@"webank:/%@", params];
+            body[@"type"] = @"MiniProgramLaunch.Resp";
+            [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+        } @catch (NSException *exception) {
+            
+        }
+    } else if ([resp isKindOfClass:[WXSubscribeMsgResp class]]) {
+        @try {
+            WXSubscribeMsgResp *r = (WXSubscribeMsgResp *)resp;
+            NSMutableDictionary *body = @{@"errCode":@(r.errCode)}.mutableCopy;
+            body[@"errStr"] = r.errStr ?: @"";
+            body[@"type"] = @"SubscribeMsg.Resp";
+            body[@"openid"] = r.openId ?: @"";
+            body[@"templateId"] = r.templateId ?: @"";
+            body[@"action"] = r.action ?: @"";
+            body[@"reserved"] = r.reserved ?: @"";
+            body[@"scene"] = @(r.scene);
+            [self.bridge.eventDispatcher sendDeviceEventWithName:RCTWXEventName body:body];
+        } @catch (NSException *exception) {
+
+        }
     }
 }
 

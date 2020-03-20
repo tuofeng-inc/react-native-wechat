@@ -46,6 +46,8 @@ import com.tencent.mm.opensdk.openapi.IWXAPI;
 import com.tencent.mm.opensdk.openapi.IWXAPIEventHandler;
 import com.tencent.mm.opensdk.openapi.WXAPIFactory;
 
+import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -59,6 +61,14 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     private final static String NOT_REGISTERED = "registerApp required.";
     private final static String INVOKE_FAILED = "WeChat API invoke returns false.";
     private final static String INVALID_ARGUMENT = "invalid argument.";
+
+    private final static String RCTWXMiniProgramTypeRelease = "release";
+    private final static String RCTWXMiniProgramTypeDevelop = "develop";
+    private final static String RCTWXMiniProgramTypePreview = "preview";
+    private final static int WXMiniProgramTypeRelease = 0;
+    private final static int WXMiniProgramTypeDevelop = 1;
+    private final static int WXMiniProgramTypePreview = 2;
+
 
     public WeChatModule(ReactApplicationContext context) {
         super(context);
@@ -98,7 +108,9 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
 
     public static void handleIntent(Intent intent) {
         for (WeChatModule mod : modules) {
-            mod.api.handleIntent(intent, mod);
+            if (mod != null && mod.api != null) {
+                mod.api.handleIntent(intent, mod);
+            }
         }
     }
 
@@ -308,7 +320,9 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         }
 
         if (uri != null) {
-            this._getImage(uri, new ResizeOptions(100, 100), new ImageCallback() {
+            String typeStr = data.getString("type");
+            ResizeOptions resizeOptions = typeStr.equals("weapp") ? new ResizeOptions(512, 512) : new ResizeOptions(128, 128);
+            this._getImage(uri, resizeOptions, new ImageCallback() {
                 @Override
                 public void invoke(@Nullable Bitmap bitmap) {
                     WeChatModule.this._share(scene, data, bitmap, callback);
@@ -417,6 +431,8 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             mediaObject = __jsonToFileMedia(data);
         } else if (type.equals("mini")) {
             mediaObject = __jsonToMiniMedia(data);
+        } else if (type.equals("weapp")) {
+            mediaObject =  __jsonToMiniProgramMedia(data);
         }
 
         if (mediaObject == null) {
@@ -567,6 +583,35 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         if (data.hasKey("withShareTicket"))
             miniProgramObject.withShareTicket = data.getBoolean("withShareTicket");
         return miniProgramObject;
+
+    private WXMiniProgramObject __jsonToMiniProgramMedia(ReadableMap data) {
+        if (!data.hasKey("userName") || !data.hasKey("path") || !data.hasKey("webpageUrl")) {
+            return null;
+        }
+
+        WXMiniProgramObject object = new WXMiniProgramObject();
+        object.webpageUrl = data.getString("webpageUrl");
+        object.userName = data.getString("userName");
+        object.path = data.getString("path");
+
+        try {
+            object.withShareTicket = data.getBoolean("withShareTicket");
+        }catch(Exception e) {
+            object.withShareTicket = false;
+        }
+
+        if (data.hasKey("miniProgramType")) {
+          String miniProgramType = data.getString("miniProgramType");
+          if (miniProgramType.equals(RCTWXMiniProgramTypeRelease)) {
+            object.miniprogramType = WXMiniProgramTypeRelease;
+          } else if (miniProgramType.equals(RCTWXMiniProgramTypeDevelop)) {
+            object.miniprogramType = WXMiniProgramTypeDevelop;
+          } else if (miniProgramType.equals(RCTWXMiniProgramTypePreview)) {
+            object.miniprogramType = WXMiniProgramTypePreview;
+          }
+        }
+
+        return object;
     }
 
     // TODO: 实现sendRequest、sendSuccessResponse、sendErrorCommonResponse、sendErrorUserCancelResponse
