@@ -128,6 +128,7 @@ following fields:
 
 #### class `ShareMetadata`
 
+- `title` {String}  title of this message. 
 - `type` {Number} type of this message. Can be {news|text|imageUrl|imageFile|imageResource|video|audio|file}
 - `thumbImage` {String} Thumb image of the message, which can be a uri or a resource id.
 - `description` {String} The description about the sharing.
@@ -352,6 +353,9 @@ Sends request for proceeding payment, then returns an object:
 ```sh
 $ npm install react-native-wechat --save
 ```
+## Partners
+
+[React Native Starter Kit](https://reactnativestarter.com/) - is a mobile starter kit that allows your team to fully focus on development of the features that set your product apart from the competitors instead of building your app from scratch.
 
 ## Community
 
