@@ -169,6 +169,7 @@ RCT_EXPORT_METHOD(shareToSession:(NSDictionary *)data
 {
     [self shareToWeixinWithData:data scene:WXSceneSession callback:callback];
 }
+
 RCT_EXPORT_METHOD(launchMini:(NSDictionary *)data
                   :(RCTResponseSenderBlock)callback)
 {
@@ -179,6 +180,21 @@ RCT_EXPORT_METHOD(launchMini:(NSDictionary *)data
     launchMiniProgramReq.miniProgramType = [data[@"miniProgramType"] integerValue];
 
     [WXApi sendReq:launchMiniProgramReq completion:^(BOOL success) {
+        callback(@[success ? [NSNull null] : INVOKE_FAILED]);
+    }];
+}
+
+RCT_EXPORT_METHOD(pay:(NSDictionary *)data
+                  :(RCTResponseSenderBlock)callback)
+{
+    PayReq* req             = [PayReq new];
+    req.partnerId           = data[@"partnerId"];
+    req.prepayId            = data[@"prepayId"];
+    req.nonceStr            = data[@"nonceStr"];
+    req.timeStamp           = [data[@"timeStamp"] unsignedIntValue];
+    req.package             = data[@"package"];
+    req.sign                = data[@"sign"];
+    [WXApi sendReq:req completion:^(BOOL success) {
         callback(@[success ? [NSNull null] : INVOKE_FAILED]);
     }];
 }
