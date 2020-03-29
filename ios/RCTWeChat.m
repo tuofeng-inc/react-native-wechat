@@ -60,10 +60,11 @@ RCT_EXPORT_MODULE()
 }
 
 RCT_EXPORT_METHOD(registerApp:(NSString *)appid
+                  :(NSString *)link
                   :(RCTResponseSenderBlock)callback)
 {
     self.appId = appid;
-    callback(@[[WXApi registerApp:appid universalLink:@""] ? [NSNull null] : INVOKE_FAILED]);
+    callback(@[[WXApi registerApp:appid universalLink:link] ? [NSNull null] : INVOKE_FAILED]);
 }
 
 RCT_EXPORT_METHOD(isWXAppInstalled:(RCTResponseSenderBlock)callback)
