@@ -206,12 +206,12 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         callback.invoke(null, api.sendReq(req));
     }
 
-    private void sendShareRequest(WXMediaMessage.IMediaObject media, ReadableMap data, Callback callback) {
+    private void sendShareRequest(final WXMediaMessage.IMediaObject media, final ReadableMap data, final Callback callback) {
         if (data.hasKey("thumbImageUrl")) {
             createImageRequest(Uri.parse(data.getString("thumbImageUrl")), new ImageCallback() {
                 @Override
                 public void invoke(@Nullable Bitmap thumb) {
-                    this.sendShareRequest(media, thumb, data, callback);
+                    sendShareRequest(media, thumb, data, callback);
                 }
             });
         } else {
@@ -238,10 +238,11 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             message.messageExt = data.getString("messageExt");
         }
         if (thumb != null) {
-            if (thumb.length() / 1024 > THUMB_SIZE) {
+            byte[] thumbBytes = bitmapTopBytes(thumb);
+            if (thumbBytes.length / 1024 > THUMB_SIZE) {
                 message.thumbData = bitmapResizeGetBytes(thumb, THUMB_SIZE);
             } else {
-                message.thumbData = thumb;
+                message.thumbData = thumbBytes;
             }
         }
 
@@ -276,21 +277,21 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             imgUrl = Uri.parse(data.getString("imageUrl"));
             if (imgUrl.getScheme() == null) {
                 // handle static resource if no schema is provided.
-                imgUrl = getResourceDrawableURI(getReactApplicationContext(), imgUrl);
+                imgUrl = getResourceDrawableURI(getReactApplicationContext(), imgUrl.toString());
             }
         } catch (Exception ex) {
             imgUrl = null;
         }
 
         if (imgUrl == null) {
-            callback.invoke(null);
+            callback.invoke((Object[]) null);
             return;
         }
         createImageRequest(imgUrl, new ImageCallback() {
             @Override
             public void invoke(@Nullable Bitmap image) {
                 WXImageObject media = new WXImageObject(image);
-                this.sendShareRequest(media, image/* as thumb */, data, callback);
+                sendShareRequest(media, image/* as thumb */, data, callback);
             }
         });
     }
@@ -436,9 +437,9 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             return null;
         } else {
             return new Uri.Builder()
-                .scheme(UriUtil.LOCAL_RESOURCE_SCHEME)
-                .path(String.valueOf(id))
-                .build();
+                    .scheme(UriUtil.LOCAL_RESOURCE_SCHEME)
+                    .path(String.valueOf(id))
+                    .build();
         }
     }
 
@@ -478,8 +479,8 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             map.putString("returnKey", resp.returnKey);
         }
         this.getReactApplicationContext()
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit("WeChat_Resp", map);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("WeChat_Resp", map);
     }
 
     private interface ImageCallback {
