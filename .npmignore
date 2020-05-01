@@ -1,6 +1,9 @@
 node_modules
 /android/build
 /android/RCTWeChat.iml
+/android/.gradle
+/android/.settings
+/android/.project
 
 Example
 *.jpg
