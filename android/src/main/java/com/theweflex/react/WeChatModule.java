@@ -65,7 +65,6 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     private static byte[] bitmapTopBytes(Bitmap bitmap) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-        bitmap.recycle();
         return baos.toByteArray();
     }
 
@@ -76,7 +75,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         // FIXME(little-snow-fox): 该算法存在效率问题，希望有"义士"可以进行优化
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         // 质量压缩方法，这里100表示第一次不压缩，把压缩后的数据缓存到 baos
-        image.compress(Bitmap.CompressFormat.JPEG, 10, baos);
+        image.compress(Bitmap.CompressFormat.JPEG, 100, baos);
         int options = 10;
         // 循环判断压缩后依然大于 32kb 则继续压缩
         while (baos.toByteArray().length / 1024 > size) {
@@ -85,7 +84,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             // 每次都减少1
             options += 1;
             // 这里压缩options%，把压缩后的数据存放到baos中
-            image.compress(Bitmap.CompressFormat.JPEG, 10 / options * 10, baos);
+            image.compress(Bitmap.CompressFormat.JPEG, 100 / options * 10, baos);
         }
         return baos.toByteArray();
     }
@@ -244,6 +243,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             } else {
                 message.thumbData = thumbBytes;
             }
+            thumb.recycle();
         }
 
         SendMessageToWX.Req req = new SendMessageToWX.Req();
@@ -288,10 +288,12 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             return;
         }
         createImageRequest(imgUrl, new ImageCallback() {
+            private static final int THUMB_SIZE = 150;
             @Override
             public void invoke(@Nullable Bitmap image) {
                 WXImageObject media = new WXImageObject(image);
-                sendShareRequest(media, image/* as thumb */, data, callback);
+                Bitmap thumbBmp = Bitmap.createScaledBitmap(image, THUMB_SIZE, THUMB_SIZE, true);
+                sendShareRequest(media, thumbBmp, data, callback);
             }
         });
     }
